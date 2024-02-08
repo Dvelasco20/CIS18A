@@ -1,1 +1,260 @@
+// Import necessary libraries
+import javax.swing.*;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
+// Define a class to represent user selections
+class Selection {
+    String itemName;
+    float itemCost;
+    String[] itemExtra;
+    float ExtraCost;
+
+    // Constructor to initialize the selection
+    Selection(String itemName, float itemCost, String[] itemExtra, float ExtraCost) {
+        this.itemName = itemName;
+        this.itemCost = itemCost;
+        this.itemExtra = itemExtra;
+        this.ExtraCost = ExtraCost;
+    }
+
+    // Method to get the cost of the selected item
+    float checkoutItem() {
+        return itemCost;
+    }
+
+    // Method to get user input for selecting extra items
+    int getUserInput(String message) {
+        int choice = JOptionPane.showOptionDialog(
+                null,
+                message,
+                "Anything Extra?",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                null,
+                null
+        );
+        return choice + 1;
+    }
+}
+
+// Main class representing the sushi ordering system
+public class Sushi {
+
+    public static void main(String[] args) {
+        // Get customer's name, pickup date, and pickup time
+        String nameofCustomer = getValidName();
+        LocalDate pickupDate = getValidPickupDate();
+        String pickupTime = getValidPickupTime();
+
+        float total = 0.0f;
+        float ExtraTotal = 0.0f;
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("checkout_list.txt"))) {
+            // Write customer name to the order summary file
+            writer.write("Name of customer: " + nameofCustomer + "\n\n");
+
+            int choice;
+            do {
+                // Display menu and get user choice
+                choice = getMenuChoice();
+
+                if (choice != 5) {
+                    // Create a selection object based on user's choice
+                    Selection selection = new Selection(getSelectionName(choice), getSelectionCost(choice), getSelectionExtra(choice), getSelectionExtraCost(choice));
+                    total += selection.checkoutItem();
+
+                    // Prompt user for additional items and calculate ExtraTotal
+                    for (String extra : selection.itemExtra) {
+                        int extraChoice = selection.getUserInput(extra + "?\n1. Yes (はい)\n2. No (いいえ)");
+                        if (extraChoice == 1) {
+                            ExtraTotal += selection.ExtraCost;
+                        }
+                    }
+
+                    // Write selected item details to the order summary file
+                    writer.write(selection.itemName);
+                    writer.write(" - " + String.format("%.2f", selection.itemCost));
+                    writer.write("\n");
+                }
+            } while (choice != 5);
+
+            // Write total extra cost to the order summary file
+            writer.write("Total Extras Cost: $" + String.format("%.2f", ExtraTotal) + "\n");
+            
+
+            // Calculate and display order total to the user
+            float orderTotal = total + ExtraTotal;
+            JOptionPane.showMessageDialog(null, "Your Order at David's Sushi House is complete!"  + "\nTotal Cost $" + String.format("%.2f", orderTotal) + "\nPickup Date: " + pickupDate.toString() + "\nPickup Time: " + pickupTime);
+            
+            // Write order total, pickup date, and pickup time to the order summary file
+            writer.write("Total Cost: $" + String.format("%.2f", orderTotal) + "\n");
+            writer.write("Pickup Date: " + pickupDate.toString() + "\n");
+            writer.write("Pickup Time: " + pickupTime + "\n\n");
+            writer.write("1234 playground Street Moreno Valley, CA 92557");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Method to get a valid customer name
+    static String getValidName() {
+        String nameofCustomer;
+        boolean validName;
+        do {
+            nameofCustomer = JOptionPane.showInputDialog("Please enter your name in the format (Lastname, Firstname):");
+            validName = nameofCustomer != null && nameofCustomer.matches("^\\s*[A-Za-z]+,\\s*[A-Za-z]+\\s*$");
+            if (!validName) {
+                JOptionPane.showMessageDialog(null, "Invalid name format. Please enter your name in the format (Lastname, Firstname).");
+            }
+        } while (!validName);
+        return nameofCustomer;
+    }
+
+    // Method to get a valid pickup date
+    static LocalDate getValidPickupDate() {
+        LocalDate pickupDate = null;
+        boolean validDate;
+        do {
+            String pickupDateString = JOptionPane.showInputDialog("Please enter the pickup date (YYYY-MM-DD):");
+            validDate = pickupDateString != null;
+            if (validDate) {
+                try {
+                    pickupDate = LocalDate.parse(pickupDateString);
+                } catch (DateTimeParseException e) {
+                    validDate = false;
+                }
+            }
+            if (!validDate) {
+                JOptionPane.showMessageDialog(null, "Invalid date format. Please enter the date in the format YYYY-MM-DD.");
+            }
+        } while (!validDate);
+        return pickupDate;
+    }
+
+    // Method to get a valid pickup time
+    static String getValidPickupTime() {
+        String pickupTime = null;
+        boolean validTime;
+        do {
+            pickupTime = JOptionPane.showInputDialog("Please select a pickup time within store hours (Mon-Fri 10am - 4pm, Sat & Sun 10am - 8pm):");
+            validTime = pickupTime != null && isValidTime(pickupTime);
+            if (!validTime) {
+                JOptionPane.showMessageDialog(null, "Invalid pickup time. Please select a pickup time within store hours.");
+            }
+        } while (!validTime);
+        return pickupTime;
+    }
+
+    // Method to check if the provided time is within store hours
+    static boolean isValidTime(String time) {
+        String[] validTimes = {"10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm"};
+        if (time == null) return false;
+
+        if (time.endsWith("am")) {
+            if (time.compareTo("10am") >= 0 && time.compareTo("4pm") <= 0) {
+                return true;
+            }
+        } else if (time.endsWith("pm")) {
+            if (time.compareTo("10am") >= 0 && time.compareTo("8pm") <= 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Method to display menu and get user choice
+    static int getMenuChoice() {
+        Object[] options = {"Sushi", "Bento Box", "Salad", "Milk Tea", "Checkout"};
+        int choice = JOptionPane.showOptionDialog(
+                null,
+                "Here are the different selections to choose from.",
+                "Selection Process",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[0]
+        );
+        return choice + 1;
+    }
+
+    // Method to get the name of the selected item
+    static String getSelectionName(int choice) {
+        String itemName;
+        switch (choice) {
+            case 1:
+                itemName = "Sushi";
+                break;
+            case 2:
+                itemName = "Bento Box";
+                break;
+            case 3:
+                itemName = "Salad";
+                break;
+            case 4:
+                itemName = "Milk Tea";
+                break;
+            default:
+                itemName = "";
+                break;
+        }
+        return itemName;
+    }
+    
+    // Method to get the cost of the selected item
+    static float getSelectionCost(int choice) {
+        float itemCost;
+        switch (choice) {
+            case 1:
+                itemCost = 10.99f;
+                break;
+            case 2:
+                itemCost = 12.99f;
+                break;
+            case 3:
+                itemCost = 8.99f;
+                break;
+            case 4:
+                itemCost = 5.99f;
+                break;
+            default:
+                itemCost = 0.0f;
+                break;
+        }
+        return itemCost;
+    }
+    
+    // Method to get extra options for the selected item
+    static String[] getSelectionExtra(int choice) {
+        String[] itemExtra;
+        switch (choice) {
+            case 1:
+                itemExtra = new String[]{"Avocado", "Cucumber", "Ginger"};
+                break;
+            case 2:
+                itemExtra = new String[]{"Chicken", "Beef", "Tempura"};
+                break;
+            case 3:
+                itemExtra = new String[]{"Croutons", "Cheese", "Dressing"};
+                break;
+            case 4:
+                itemExtra = new String[]{"Boba", "Lychee Jelly", "Honey"};
+                break;
+            default:
+                itemExtra = new String[0];
+                break;
+        }
+        return itemExtra;
+    }
+    
+    // Method to get the cost of extra options for the selected item
+    static float getSelectionExtraCost(int choice) {
+        return 2.50f;
+    }
+}
